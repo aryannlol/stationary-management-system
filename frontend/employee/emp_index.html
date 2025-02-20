@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard - Stationery Management</title>
+    <link rel="stylesheet" href="/frontend/employee/emp_styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Employee Dashboard</h1>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </header>
+
+        <section class="search-section">
+            <h2>Search Items</h2>
+            <input type="text" id="searchItem" placeholder="Search items...">
+            <button onclick="searchItem()">Search</button>
+            <div id="searchResults" class="search-results"></div>
+        </section>
+
+        <section class="request-section">
+            <h2>Request Stationery</h2>
+            <form id="requestForm">
+
+                <div class="form-group">
+                    
+                    <select id="itemDropdown" required>
+                        <option value="">Select an item</option> 
+                    </select>
+                    
+                </div>
+                <div class="form-group">
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" id="quantity" required>
+                </div>
+                <div class="form-group">
+                    <label for="reason">Reason:</label>
+                    <textarea id="reason" required></textarea>
+                </div>
+                <button type="submit">Submit Request</button>
+            </form>
+        </section>
+        
+
+        <section class="my-requests-section">
+            <h2>My Requests</h2>
+            <button onclick="refreshRequests()">Refresh</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item ID</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                        <th>Admin Response</th>
+                    </tr>
+                </thead>
+                <tbody id="my-requests">
+                    <!-- Requests will be populated here -->
+                </tbody>
+            </table>
+        </section>
+    </div>
+    <script src="/frontend/employee/emp_script.js"></script>
+</body>
+</html>

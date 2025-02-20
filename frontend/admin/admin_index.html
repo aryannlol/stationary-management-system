@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/frontend/admin/admin_styles.css">
+
+    <!-- 🔹 Redirect if user is not logged in -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (!localStorage.getItem("token")) {
+                window.location.href = "login.html";
+            }
+        });
+    </script>
+</head>
+<body>
+
+    <header>Admin Dashboard</header>
+    <button id="logoutBtn">Logout</button>
+
+    <div class="container">
+        <h2>Employee Requests</h2>
+        <button onclick="refreshRequests()">🔄 Refresh Requests</button>
+
+        <section class="upload-section">
+            <h2>Upload Inventory File</h2>
+            <input type="file" id="inventoryFile" accept=".xlsx, .xls">
+            <button id="uploadBtn">Upload</button>
+            <p id="uploadStatus"></p>
+        </section>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="admin-requests">
+                
+                <!-- Employee requests will be inserted dynamically -->
+            </tbody>
+        </table>
+        <button onclick="clearRequests()">🗑️ Clear Requests</button>
+        
+    </div>
+
+    <script src="/frontend/admin/admin_script.js"></script>
+    
+    <!-- 🔹 Ensure Logout Button & Upload Work -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("logoutBtn").addEventListener("click", function () {
+                localStorage.removeItem("token");
+                localStorage.removeItem("role"); // 🔹 Remove role
+                window.location.href = "/frontend/index.html";
+            });
+    
+            document.getElementById("uploadBtn").addEventListener("click", uploadInventory);
+        });
+    </script>
+    
+
+</body>
+</html>
