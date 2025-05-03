@@ -2,66 +2,119 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Dashboard - Stationery Management</title>
+    <title>Employee Dashboard</title>
     <link rel="stylesheet" href="/frontend/employee/emp_styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Employee Dashboard</h1>
-            <button onclick="logout()" class="logout-btn">Logout</button>
-        </header>
 
-        <section class="search-section">
-            <h2>Search Items</h2>
-            <input type="text" id="searchItem" placeholder="Search items...">
-            <button onclick="searchItem()">Search</button>
-            <div id="searchResults" class="search-results"></div>
-        </section>
+<header>
+    Employee Dashboard
+    <button onclick="logout()" style="float: right; margin-top: -5px;">Logout</button>
+</header>
 
-        <section class="request-section">
-            <h2>Request Stationery</h2>
+<main class="container">
+
+    <!-- Search & Item Grid Section -->
+<!-- Replace the search input section -->
+<section class="inventory-section">
+    <h2>Available Stationery</h2>
+    <div class="search-container">
+        <input type="text" id="searchItem" placeholder="Search items by name..." 
+               oninput="searchItem()">
+        <span class="search-icon">🔍</span>
+    </div>
+    <div id="itemsContainer" class="item-grid">
+        <!-- Items will load here -->
+    </div>
+</section>
+    <!-- Request Modal -->
+    <div class="request-modal" id="requestModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('requestModal').style.display='none'">&times;</span>
+            <h3>Request Item</h3>
             <form id="requestForm">
+                <input type="hidden" id="selectedItemId">
 
-                <div class="form-group">
-                    
-                    <select id="itemDropdown" required>
-                        <option value="">Select an item</option> 
-                    </select>
-                    
-                </div>
-                <div class="form-group">
-                    <label for="quantity">Quantity:</label>
-                    <input type="number" id="quantity" required>
-                </div>
-                <div class="form-group">
-                    <label for="reason">Reason:</label>
-                    <textarea id="reason" required></textarea>
-                </div>
+                <label>Item Name</label>
+                <input type="text" id="selectedItemName" readonly>
+
+                <label for="quantity">Quantity</label>
+                <input type="number" id="quantity" required>
+
+                <label for="reason">Reason</label>
+                <textarea id="reason" rows="3" required></textarea>
+
                 <button type="submit">Submit Request</button>
             </form>
-        </section>
-        
-
-        <section class="my-requests-section">
-            <h2>My Requests</h2>
-            <button onclick="refreshRequests()">Refresh</button>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Item ID</th>
-                        <th>Quantity</th>
-                        <th>Status</th>
-                        <th>Admin Response</th>
-                    </tr>
-                </thead>
-                <tbody id="my-requests">
-                    <!-- Requests will be populated here -->
-                </tbody>
-            </table>
-        </section>
+        </div>
     </div>
-    <script src="/frontend/employee/emp_script.js"></script>
+
+    <!-- My Requests Table -->
+    <section class="requests-section">
+        <h2>My Requests</h2>
+        <button onclick="displayEmployeeRequests()" class="refresh-btn">
+            🔄 Refresh My Requests
+        </button>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Status</th>
+                    <th>Admin Response</th>
+                </tr>
+            </thead>
+            <tbody id="my-requests">
+                <!-- Requests will be loaded here -->
+            </tbody>
+        </table>
+    </section>
+    <!-- Add this near your requests table -->
+<section class="order-history-section">
+    <div id="orderHistoryContainer"></div>
+</section>
+<!-- Order History Section -->
+ 
+<section class="order-history">
+    <h2>My Order History</h2>
+    <div class="export-controls">
+        <button onclick="exportMyOrders()" class="export-btn">
+            <i class="fas fa-download"></i> Export to CSV
+        </button>
+    </div>
+    <div class="table-container">
+        <table id="orderHistoryTable">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Filled by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</section>
+<!-- Add this conditional wrapper -->
+<div id="authContainer">
+    <section class="order-history" id="orderHistorySection" style="display: none;">
+        <h2>My Order History</h2>
+        <div class="table-container">
+            <table id="orderHistoryTable">
+                <!-- ... existing table code ... -->
+            </table>
+        </div>
+    </section>
+</div>
+</main>
+
+
+<script src="/frontend/employee/emp_script.js"></script>
 </body>
 </html>

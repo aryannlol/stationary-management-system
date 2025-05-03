@@ -1,6 +1,6 @@
 const API_URL = "http://127.0.0.1:5000";
 
-// 🔹 Unified Initialization on Page Load
+// 🔹 On Load: Basic Token Check + Init
 document.addEventListener("DOMContentLoaded", () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -8,70 +8,35 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    checkUserRole();  // Ensure only employees access this page
-    fetchItemsAndPopulateDropdown();  // Load inventory
-    displayEmployeeRequests();  // Load requests
+    // Fetch items and requests on page load
+    fetchItems();
+    displayEmployeeRequests(); 
+    loadOrderHistory(); // Ensure employee requests are displayed after page load
 });
 
-// 🔹 Search Items
-async function searchItem() {
-    const token = localStorage.getItem("token");
-    let searchValue = document.getElementById("searchItem").value.toLowerCase();
-
-    try {
-        const response = await fetch(`${API_URL}/inventory?search=${searchValue}`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        if (response.status === 401) {
-            handleUnauthorized();
-            return;
-        }
-
-        const results = await response.json();
-        const resultBox = document.getElementById("searchResults");
-        resultBox.innerHTML = results.length
-            ? results.map(item => `<p>${item.name} (Stock: ${item.stock})</p>`).join("")
-            : "<p>No items found.</p>";
-    } catch (error) {
-        console.error("Error searching items:", error);
-        alert("Error searching items. Please try again.");
-    }
+// 🔹 Fetch & Display Items
+async function fetchItems() {
+    currentSearch = '';
+    currentPage = 1;
+    await fetchAndDisplayItems();
 }
 
-// 🔹 Fetch Inventory & Populate Dropdown
-async function fetchItemsAndPopulateDropdown() {
-    const token = localStorage.getItem("token");
-    const itemDropdown = document.getElementById("itemDropdown");
+// 🔹 Select Item & Show Modal
+function selectItem(id, name) {
+    document.getElementById("selectedItemId").value = id;
+    document.getElementById("selectedItemName").value = name;
+    document.getElementById("requestModal").style.display = "flex";
+}
 
-    try {
-        // ✅ Fetch from `/items` instead of `/inventory`
-        const response = await fetch(`${API_URL}/items`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
+function closeModal() {
+    document.getElementById("requestModal").style.display = "none";
+}
 
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-
-        const items = await response.json();
-        console.log("✅ Inventory Fetched:", items);
-
-        if (!items.length) {
-            alert("No items found in inventory.");
-            return;
-        }
-
-        itemDropdown.innerHTML = '<option value="">Select an item</option>';
-        items.forEach(item => {
-            let option = document.createElement("option");
-            option.value = item.id;
-            option.textContent = `${item.name} (Stock: ${item.stock})`;
-            itemDropdown.appendChild(option);
-        });
-
-    } catch (error) {
-        console.error("❌ Error fetching inventory:", error);
-        alert("Error fetching inventory. Check the console.");
-    }
+// 🔹 Live Search
+async function searchItem() {
+    currentSearch = document.getElementById("searchItem").value;
+    currentPage = 1; // Reset to first page on new search
+    await fetchAndDisplayItems();
 }
 
 // 🔹 Submit Request
@@ -79,25 +44,18 @@ async function submitRequest(event) {
     event.preventDefault();
 
     const token = localStorage.getItem("token");
-    if (!token) {
-        alert("You must be logged in to submit a request.");
-        return;
-    }
-
-    const itemId = parseInt(document.getElementById("itemDropdown").value);
+    const itemId = parseInt(document.getElementById("selectedItemId").value);
     const quantity = parseInt(document.getElementById("quantity").value);
     const reason = document.getElementById("reason").value;
 
-    if (!itemId || isNaN(itemId)) {
-        alert("Please select a valid item.");
+    if (!itemId) {
+        alert("Please select an item.");
         return;
     }
 
     const requestData = { item_id: itemId, quantity, reason };
 
     try {
-        console.log("🔹 Sending Request:", requestData); // ✅ Debug Log
-
         const response = await fetch(`${API_URL}/requests`, {
             method: "POST",
             headers: {
@@ -108,24 +66,20 @@ async function submitRequest(event) {
         });
 
         const result = await response.json();
-        console.log("🔹 Response:", result); // ✅ Debug Log
-
-        if (!response.ok) {
-            throw new Error(result.message || `HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(result.message || "Low Stock.....");
 
         alert("✅ Request submitted successfully!");
         document.getElementById("requestForm").reset();
-        displayEmployeeRequests(); // Refresh requests list
+        closeModal();
+
+        // Refresh the employee requests
+        displayEmployeeRequests();
+
     } catch (error) {
         console.error("❌ Error submitting request:", error);
         alert(error.message);
     }
 }
-
-// ✅ Make sure the form submission is handled
-document.getElementById("requestForm").addEventListener("submit", submitRequest);
-
 
 // 🔹 Display Employee Requests
 async function displayEmployeeRequests() {
@@ -134,76 +88,258 @@ async function displayEmployeeRequests() {
 
     try {
         const response = await fetch(`${API_URL}/requests`, {
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
+            headers: { "Authorization": `Bearer ${token}` }
         });
 
-        if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
+        if (!response.ok) throw new Error("Error fetching requests.");
 
         const requests = await response.json();
-        console.log("🔹 Employee Requests:", requests); // Debugging
-
-        requestContainer.innerHTML = "";
-
-        if (!Array.isArray(requests) || requests.length === 0) {
-            requestContainer.innerHTML = "<tr><td colspan='4'>No requests found</td></tr>";
-            return;
-        }
-
-        requestContainer.innerHTML = requests.map(req => `
-            <tr>
-                <td>${req.item_name || "Unknown"}</td>
-                <td>${req.quantity}</td>
-                <td>${req.status}</td>
-                <td>${req.admin_response || "Pending"}</td>
-            </tr>
-        `).join("");
+        requestContainer.innerHTML = requests.length
+            ? requests.map(req => `
+                <tr>
+                    <td>${req.item_name || "Unknown"}</td>
+                    <td>${req.quantity}</td>
+                    <td class="${req.status.toLowerCase()}">${req.status}</td>
+                    <td>${req.admin_response || "Pending"}</td>
+                </tr>
+            `).join("")
+            : "<tr><td colspan='4'>No requests found</td></tr>";
 
     } catch (error) {
         console.error("❌ Error Fetching Employee Requests:", error);
-    }
-}
-
-// 🔹 Updated Refresh Function
-async function refreshRequests() {
-    console.log("🔄 Refreshing Requests...");
-    await displayEmployeeRequests();
-}
-
-// 🔹 Handle Unauthorized Users
-function handleUnauthorized() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-
-    alert("Session expired or unauthorized access. Please log in again.");
-    window.location.href = "/frontend/index.html";
-}
-
-// 🔹 Check User Role
-function checkUserRole() {
-    const role = localStorage.getItem("role");
-    if (role === "admin") {
-        window.location.href = "/frontend/admin_dashboard.html";  // Redirect admins
-    } else if (role !== "employee") {
-        handleUnauthorized();
+        requestContainer.innerHTML = "<tr><td colspan='4'>Error loading employee requests.</td></tr>";
     }
 }
 
 // 🔹 Logout
 function logout() {
-    const token = localStorage.getItem("token");
+    // Clear all client-side data
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
 
-    fetch(`${API_URL}/logout`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` }
-    }).finally(() => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        window.location.href = "/frontend/index.html";
-    });
+    // Clear the UI
+    document.getElementById("itemsContainer").innerHTML = "";
+    document.getElementById("my-requests").innerHTML = "";
+    const orderHistory = document.getElementById("orderHistoryTable");
+    if (orderHistory) orderHistory.querySelector("tbody").innerHTML = "";
+
+    // Redirect to login
+    window.location.href = "/frontend/index.html";
 }
 
-// 🔹 Make functions available globally
-window.searchItem = searchItem;
-window.submitRequest = submitRequest;
-window.refreshRequests = refreshRequests;
-window.logout = logout;
+// 🔹 Form Submit Handler
+document.getElementById("requestForm").addEventListener("submit", submitRequest);
+
+// 🔹 Pagination for Items
+async function fetchAndDisplayItems() {
+    const container = document.getElementById("itemsContainer");
+    const token = localStorage.getItem("token");
+
+    try {
+        container.innerHTML = "<p>Loading items...</p>";
+
+        const response = await fetch(
+            `${API_URL}/items?search=${encodeURIComponent(currentSearch)}&page=${currentPage}`,
+            { headers: { "Authorization": `Bearer ${token}` } }
+        );
+
+        if (!response.ok) throw new Error("Failed to load items");
+
+        const data = await response.json();
+
+        // Clear previous results
+        container.innerHTML = "";
+
+        if (data.items.length === 0) {
+            container.innerHTML = "<p class='no-results'>No items found</p>";
+            return;
+        }
+
+        // Display items
+        data.items.forEach(item => {
+            const itemCard = document.createElement("div");
+            itemCard.classList.add("item-card");
+            itemCard.innerHTML = `
+                <h3>${item.name}</h3>
+                <p>Stock: ${item.stock}</p>
+                <button onclick="selectItem(${item.id}, '${item.name.replace("'", "\\'")}', ${item.stock})">
+                    Request
+                </button>
+            `;
+            container.appendChild(itemCard);
+        });
+
+        // Add pagination (now properly contained)
+        if (data.total_pages > 1) {
+            const paginationContainer = document.createElement("div");
+            paginationContainer.className = "pagination-container";
+
+            const paginationControls = document.createElement("div");
+            paginationControls.className = "pagination-controls";
+            paginationControls.innerHTML = `
+                <button ${currentPage <= 1 ? 'disabled' : ''} 
+                    onclick="changePage(${currentPage - 1})">
+                    ← Previous
+                </button>
+                <span>Page ${currentPage} of ${data.total_pages}</span>
+                <button ${currentPage >= data.total_pages ? 'disabled' : ''} 
+                    onclick="changePage(${currentPage + 1})">
+                    Next →
+                </button>
+            `;
+
+            paginationContainer.appendChild(paginationControls);
+            container.appendChild(paginationContainer);
+        }
+
+    } catch (error) {
+        container.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+    }
+}
+
+// 🔹 Page Change Handler
+function changePage(newPage) {
+    currentPage = newPage;
+    fetchAndDisplayItems();
+}
+
+// 🔹 Display Order History (Employee Orders)
+async function showOrderHistory() {
+    try {
+        const response = await fetch(`${API_URL}/employee/orders`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const orders = await response.json();
+
+        const historySection = document.createElement('div');
+        historySection.className = 'order-history';
+        historySection.innerHTML = `
+            <h3>My Order History</h3>
+            <button onclick="exportMyOrders()" class="export-btn">
+                📊 Export to CSV
+            </button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orders.map(order => `
+                        <tr>
+                            <td>${order.item_name}</td>
+                            <td>${order.quantity}</td>
+                            <td class="${order.status}">${order.status}</td>
+                            <td>${order.date}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById('orderHistoryContainer').appendChild(historySection);
+    } catch (error) {
+        console.error('Error loading order history:', error);
+    }
+}
+// Display order history
+async function loadOrderHistory() {
+    const token = localStorage.getItem('token');
+    const tbody = document.querySelector("#orderHistoryTable tbody");
+
+    // Clear previous content and show loading state
+    tbody.innerHTML = '<tr><td colspan="4" class="loading">Loading history...</td></tr>';
+
+    // Check authentication first
+    if (!token) {
+        tbody.innerHTML = '<tr><td colspan="4" class="error">Please login to view order history</td></tr>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/employee/orders`, {
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Check for HTTP errors
+        if (!response.ok) {
+            const error = await response.json().catch(() => null);
+            throw new Error(error?.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const orders = await response.json();
+
+        // Update the UI
+        if (orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="no-orders">No order history found</td></tr>';
+        } else {
+            tbody.innerHTML = orders.map(order => `
+                <tr>
+                    <td>${escapeHtml(order.item_name)}</td>
+                    <td>${order.quantity}</td>
+                    <td class="status-${order.status.toLowerCase()}">${order.status}</td>
+                    <td>${order.date}</td>
+                </tr>
+            `).join('');
+        }
+
+    } catch (error) {
+        console.error('Error loading order history:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="error">
+                    Failed to load history: ${escapeHtml(error.message)}
+                </td>
+            </tr>
+        `;
+        
+        // Auto-redirect if unauthorized
+        if (error.message.includes('401')) {
+            setTimeout(() => {
+                window.location.href = '/frontend/index.html';
+            }, 2000);
+        }
+    }
+}
+
+
+// 🔹 Export Order History to CSV
+async function exportMyOrders() {
+    try {
+        const response = await fetch(`${API_URL}/employee/orders/export`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+
+        if (!response.ok) throw new Error('Export failed');
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'my_orders.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        alert('Export failed: ' + error.message);
+        console.error('Export error:', error);
+    }
+}
+
+// 🔹 Helper Function to Escape HTML (Prevent XSS)
+function escapeHtml(unsafe) {
+    return unsafe?.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;") || '';
+}

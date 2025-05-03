@@ -4,33 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Supplier Dashboard</title>
+    <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
     <link rel="stylesheet" href="/frontend/supplier/supp_styles.css">
+    <style>
+        body { font-family: Inter, sans-serif; margin: 2rem; }
+        .order-card { border: 1px solid #ccc; padding: 1rem; margin: 1rem 0; border-radius: 5px; }
+        .error { color: red; }
+        button { padding: 0.5rem 1rem; margin: 0.5rem; }
+    </style>
 </head>
 <body>
-
     <header>Supplier Dashboard</header>
-
-    <!-- Orders From Admin -->
-    <div class="container">
-        <h2>Purchase Orders</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th>Item</th>
-                    <th>Quantity</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="supplier-orders">
-                <!-- Orders will be inserted dynamically -->
-            </tbody>
-        </table>
-    </div>
-
+    <button onclick="logout()">Logout</button>
+    <h2>Your Orders</h2>
+    <div id="ordersContainer"></div>
+    <script>
+        function logout() {
+            localStorage.removeItem("token");
+            localStorage.removeItem("role");
+            window.location.href = "/frontend/index.html";
+        }
+    </script>
     <script src="/frontend/supplier/supp_script.js"></script>
-    
-
 </body>
 </html>
